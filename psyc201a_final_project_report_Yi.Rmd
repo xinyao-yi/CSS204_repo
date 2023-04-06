@@ -1,0 +1,77 @@
+---
+title: "Correlations Between Tone Systems and Environment"
+author: "Xinyao Yi"
+date: "`r Sys.time()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Abstract
+**This study aims to figure out whether the presence of tones is correlated with some environmental features. In terms of environmental features, the data are collected from the local official environment records from the website. As for tones of a certain language, 400 languages were extracted from WALS and AUTOTYP (two libraries documenting languages features from all over the world). The presence of tones/tone system serves as the dependent variable while humidity and elevation are selected from a number of environmental features given their high degree of representativity, serving as two primary independent variables in the study. Logistic regression is used to analyze the data. It is found that humidity is significantly associated with tone system (Estimate = 0.28, SE = 0.11, p = 0.01), while the effect of elevation is not significant. More language-environment modulators such as diet and cultural evolution can be examined of their effects to depict a more nuanced relationship picture between language and environment in future studies.**
+
+## Motivation
+For some languages in the world, the words of them have tones. For example, in Mandarin, each pronunciation has four tones - flat, raised, turned and dropped (and also a neutral tone). For the other languages, they appear not have a tone system. For example, English is a none-tone language. The purpose of the study is to find out whether some environmental features (e.g., humidity, elevation) is associated with the presence of tones. This could help in figuring out the regulations in evolution of language.
+
+## Research questions
+1. **Is the presence of tones correlated with humidity?**
+
+2. **Is the presence of tones correlated with humidity and elevation?**
+
+## Hypotheses
+1. **The presence of tones is correlated with humidity, which can be supported if we find a significant result in the compact model.**
+
+2. **The presence of tones is correlated with both humidity and elevation, which can be supported if we find significant results of both these two variables in the augmented model.**
+
+## Methods
+
+### Study type
+Observational data are used in this study.
+
+### Independent variables
+For question 1, the predictor variable is `humidity`. In the data set, the original form of this variable (before data processing) is `mean_hum`, which stands for the mean humidity of an area. It ranges from 0.002 to 0.019. In the data processing procedure, the mean and standard deviation of this variable (`mean_hum`) is calculated, and then it is transformed into a z-score form (i.e., standard normal distribution form: mean = 0, sd = 1) by using the mean and sd (formula: z_score = (mean_hum - mean(mean_hum)) / sd(mean_hum)). The new variable (the z-score form variable) is `humidity_z` in the data set, and the range of it is from -2.13 to 1.30.
+
+For question 2, the predictor variables are `humidity` and `elevation`. `Humidity` is operationalized by `humidity_z` as stated on the text above ("for question 1"). The operationalization method for `elevation` is the same as for humidity. The original form of `elevation` is `elev_m` in the data set, which stands for the mean elevation of an area, ranging from -1.01 to 5956.01. In the data processing procedure, it is also transformed into the z-score form/standard normal distribution form (by calculating its mean and sd, and then using the formula: z_score = (elev_m - mean(elev_m)) / sd(elev_m)). The new variable (the z-score form variable) is `elevation_z` in the data set, and the range of it is from -0.82 to 6.24 (will be dropped the extreme values later).
+
+### Dependent variables
+Tone system. It stands for whether a language has different tones or not. In the original coding form, `tone system` is coded as a 3-level variable -- no tones, simple tone system, and complex tone system. In the data processing step, "simple tone system" and "complex tone system" are merged into one category - "the presence of tones/tonal language", as contrast to "no tones". Thus, `tone system` becomes a binomial variable (presented as `tone_bin` in the data set), containing only 2 levels -- no tones and the presence of tones.
+
+### Data preprocessing
+In the data processing step, due to different levels of measurement units (e.g., 0.002 vs. 200) and big difference in units span (e.g., 0.002 ~ 0.019 vs. -1 ~ 5956), the independent variables `humidity` and `elevation` are transformed into their z-score forms (detailed methods are mentioned above). The dependent variable `tone system` is turned into a binomial variable which contains 2 levels -- no tones and the presence of tones. The data set is quite complete, so there is no missing values. As the independent variables are transformed into z-score form, the value which is smaller than -5 or larger than 5 is considered as an outlier, and will be dropped from the data set. There are 3 data points in `elevation_z` larger than 5, so they are considered as outliers, thus being dropped from the data set. Now the range of `elevation_z` is -0.82 to 3.25.
+
+## Results
+
+### Data visualizations
+```{r echo=FALSE, out.width = "100%"}
+knitr::include_graphics("figures/000036.png")
+```
+
+### Statistical modeling
+**Compact Model: Tone system ~ Humidity.**
+
+R code: glm(data = final.data, tone_bin ~ 1 + humidity_z, family = "binomial").
+
+**Augmented model: Tone system ~ Humidity + Elevation.**
+
+R code: glm(data = final.data, tone_bin ~ 1 + humidity_z + elevation_z, family = "binomial").
+
+### Summary of findings
+1. To answer the first research question, we fit `tone system` with a logistic regression model, with `humidity` as a predictor. We find a significant correlation between tone system and humidity (Estimate = 0.28, SE = 0.11, p = 0.01), which can support that the presence of tones is correlated with humidity. The statistical results can be interpreted as two parts. First, the baseline level of a language supposed to be tonal is 0.27. Second, from the simulation (see details in `codes_ver3.0 ### Interpret results: Calculate probability`), we can tell that for one-unit increase in humidity (`humidity_z`), the expected increase in the probability of the presence of tones is about 6%.
+
+2. Then, We compare the augmented model where `elevation` is also included as the predictor to the compact model, in order to evaluate the degree of elevation (served as another environmental feature) predicting tone system above and beyond humidity. However, we find that elevation is not a significant predictor to the presence of tones (Estimate = 0.09, SE = 0.11, p = 0.41) when being included together with humidity, while humidity is still a significant predictor to tone system (Estimate = 0.29, SE = 0.11, p < 0.01) in this model.
+
+## Discussion
+1. This study only includes environmental features when predicting the presence of tones. Actually, the language-environment effect may be modulated by other factors, such as diet, cultural evolution and so on. Further research can take a deeper step to dig the modulation effects.
+
+2. When plotting the graph in the data visualization step, if "glm" method is not fitted in the geom_smooth function, the graph turns out to be the one below. In the range of [0.25, 1] (actual value [0.014, 0.020] for the mean of humidity) part, the curve goes down instead of keeping its former up trend. This indicates the effect of [0.25, 1] part is not as good as the other parts (i.e., the [-2.1, 0.25] part). Thus, the result is better to be constrained among [-2.1, 0.25] part or further study needs to be done to give more a nuanced investigation into the effect of the [0.25, 1] part.
+
+```{r echo=FALSE, out.width = "100%"}
+knitr::include_graphics("figures/000014.png")
+```
+
+## References
+Takahashi, M., & Arnett, C. (2022, October 27). Creating a Baseline to Evaluate Correlations Between Language and Environment. Retrieved from https://osf.io/ez2xy/.
+
+The data set could also be found through the link in the reference above.

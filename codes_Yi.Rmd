@@ -1,0 +1,115 @@
+---
+title: "Codes for Final Project (ver 3.0)"
+author: "Xinyao Yi"
+output: pdf_document
+---
+
+### Installing Packages and Library
+```{r install-packages, eval=FALSE, include=FALSE}
+install.packages("ggeffects")
+```
+
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(lme4)
+library(data.table)
+library(stringr)
+library(dplyr)
+library(graphics)
+library(lmerTest)
+library(ggeffects)
+```
+
+### Load Dataset
+```{r, message=F, eval=T}
+load("final_data.RData")
+```
+
+### Data preprocessing
+```{r, message=F, eval=T}
+#Part 1: Change `tone system` into a binomial variable
+##tone_num: dummy coding string variable `tones` to a 3-level numeric variable `tone_num`
+final.data$tone_num = final.data$tones
+
+final.data$tone_num = ifelse(final.data$tone_num  == '1 - No tones', 1,
+                              ifelse(final.data$tone_num  == '2 - Simple tone system', 2,
+                                 ifelse(final.data$tone_num  == '3 - Complex tone system', 3,
+                                                          1)))
+final.data = final.data %>%
+  mutate(tone_num = as.numeric(tone_num))
+
+##tone_bin: make 3-level variable `tone_num` into a binomial variable `tone_bin`
+final.data$tone_bin = final.data$tone_num
+
+final.data$tone_bin = ifelse(final.data$tone_bin  == 1, 0,
+                              ifelse(final.data$tone_bin == 2, 1,
+                                 ifelse(final.data$tone_bin == 3, 1,
+                                                          0)))
+
+final.data$tone_bin = as.numeric(final.data$tone_bin)
+
+#Part 2: Take z-score of environmental features (humidity and temperature)
+#formula: z_scores <- (data - mean(data)) / sd(data)
+mean_hum_repl = mean(final.data$mean_hum)
+sd_hum_repl = sd(final.data$mean_hum)
+
+mean_elev_repl = mean(final.data$elev_m)
+sd_elev_repl = sd(final.data$elev_m)
+
+final.data = final.data %>%
+  mutate(humidity_z = (mean_hum - mean_hum_repl) / sd_hum_repl) %>%
+  mutate(elevation_z = (elev_m - mean_elev_repl) / sd_elev_repl) 
+
+#Part 3: Handling outliers (3 outliers are dropped from the data set)
+final.data = final.data %>% 
+  filter(between(humidity_z, -5, 5)) %>%
+  filter(between(elevation_z, -5, 5))
+```
+
+### Data Visualization
+```{r, message=F, eval=T}
+ggplot(data = final.data,
+       mapping = aes(x = humidity_z,
+                     y = tone_bin)) +
+  geom_point(alpha=.5) +
+  geom_smooth(method="glm", 
+              method.args = list(family = "binomial")) +
+  labs(x = "Humidity (z-scored)",
+       y = "P(tonal)") +
+  ggtitle("Correlation between Humidity and Probability of a Tonal Language")
+```
+
+### Do models
+```{r, message=F, eval=T}
+#Compact model: tone ~ humidity
+tone_hum = glm(data = final.data, tone_bin ~ 1 + humidity_z, family = "binomial")
+summary(tone_hum)
+
+#Augmented model: tone ~ humidity + elevation
+tone_hum_elev = glm(data = final.data, tone_bin ~ 1 + humidity_z + elevation_z, family = "binomial")
+summary(tone_hum_elev)
+```
+
+### Interpret results: Calculate probability
+```{r, message=F, eval=T}
+#Compact model: tone ~ humidity 
+#(value range of humidity_z: [-2.13, 1.30])
+ggpredict(model = tone_hum,
+          terms = "humidity_z [-3:2]")
+```
+
+### Discussion 2: Graph
+```{r, message=F, eval=T}
+ggplot(data = final.data,
+       mapping = aes(x = humidity_z,
+                     y = tone_bin)) +
+  geom_point(alpha=.5) +
+  geom_smooth() +
+  labs(x = "Humidity (z-scored)",
+       y = "P(tonal)") +
+  ggtitle("Correlation between Humidity and Probability of a Tonal Language")
+```
+
+```{r sessinfo}
+sessionInfo()
+```
